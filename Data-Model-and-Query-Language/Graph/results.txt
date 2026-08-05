@@ -1,0 +1,17 @@
+
+Direct Friends
+
+Graph: 2.808ms
+SQLite: 117.182ms
+
+Friends of Friends (Depth 2)
+
+Graph BFS: 110.402ms
+SQLite Recursive: 1.632s
+
+Example Results
+
+Graph Friends: 3
+SQLite Friends: 3
+Graph BFS: 15
+SQLite BFS: 15

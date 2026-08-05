@@ -1,4 +1,4 @@
-import { getValue, deepClone, setValue, isObject } from "../utilities/utils.js";
+import { getValue, deepClone, setValue, isObject } from "../../utilities/utils.js";
 
 
 export default class myDocument{
