@@ -10,17 +10,17 @@ A list of implementable algorithms/systems mapped to each part of *Designing Dat
 
 ### Ch 2 — Data Models and Query Languages
 
-- [ ] **Simple document store with a query engine**
+- [-] **Simple document store with a query engine**
   - *Description:* A JSON-document store (like a mini MongoDB) supporting basic filtering.
   - *MFR:* Insert/get documents by ID; query by field equality; support nested field access (e.g. `user.address.city`).
 
-- [ ] **Relational vs. graph model comparison**
+- [-] **Relational vs. graph model comparison**
   - *Description:* Model the same dataset (e.g. social network) as relational tables and as a graph, then implement one query in both.
   - *MFR:* One-to-many query (e.g. "friends of friends") implemented via SQL joins and via graph traversal; compare code complexity.
 
 ### Ch 3 — Storage and Retrieval
 
-- [ ] **Hash index with append-only log** (Bitcask-style)
+- [-] **Hash index with append-only log** (Bitcask-style)
   - *Description:* Simplest storage engine — in-memory hash map pointing to byte offsets in an append-only log file.
   - *MFR:* `put(key, value)` appends to log and updates in-memory index; `get(key)` reads via offset; background compaction merges segments and discards overwritten keys; crash recovery rebuilds index by replaying the log.
 
