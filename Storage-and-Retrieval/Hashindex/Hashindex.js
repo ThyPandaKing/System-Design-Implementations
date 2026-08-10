@@ -1,10 +1,15 @@
+import fs from "node:fs/promises";
 import Logger from "./FileLogger.js";
 
 export class HashIndex {
-  constructor(path) {
+  constructor(path, compactionThreshold = 10 * 1024 * 1024) {
     this.path = path;
     this.Logger = new Logger(path);
+
     this.hashIndex = new Map();
+
+    this.compactionThreshold = compactionThreshold;
+    this.compacting = false;
   }
 
   async open() {
@@ -13,36 +18,50 @@ export class HashIndex {
   }
 
   async rebuildIndex() {
-    // we read the whole file
     const fullFile = await this.Logger.returnFull();
 
     let offset = 0;
 
-    while(offset < fullFile.length){
-        offset = this.moveBuffer(fullFile, offset);
+    while (offset < fullFile.length) {
+      offset = this.moveBuffer(fullFile, offset);
     }
+
+    // Logger.open() already sets this, but keeping this
+    // explicit makes the invariant clear.
+    this.Logger.offset = fullFile.length;
   }
 
   async set(key, value) {
-    // create buffer
+    const keyBuffer = Buffer.from(key);
+    const valueBuffer = Buffer.from(JSON.stringify(value));
 
-    let keyBuffer = Buffer.from(key);
-    let valueBuffer = Buffer.from(JSON.stringify(value));
-
-    let metaData = Buffer.alloc(8);
+    const metaData = Buffer.alloc(8);
 
     metaData.writeUInt32BE(keyBuffer.length, 0);
     metaData.writeUInt32BE(valueBuffer.length, 4);
 
-    let finalRecord = Buffer.concat([metaData, keyBuffer, valueBuffer]);
+    const finalRecord = Buffer.concat([
+      metaData,
+      keyBuffer,
+      valueBuffer,
+    ]);
 
-    // write buffer to file
+    // Append to log
     const offset = await this.Logger.set(finalRecord);
 
+    // Latest record wins
     this.hashIndex.set(key, {
-      offset: offset,
+      offset,
       recordLength: finalRecord.length,
     });
+
+    // Automatically compact when threshold is reached
+    if (
+      this.Logger.getSize() >= this.compactionThreshold &&
+      !this.compacting
+    ) {
+      await this.compact();
+    }
 
     return true;
   }
@@ -54,62 +73,75 @@ export class HashIndex {
       return null;
     }
 
-    // read from map
-    const { offset, recordLength } = entry;
+    const {
+      offset,
+      recordLength,
+    } = entry;
 
-    const bufferRecord = await this.Logger.get(offset, recordLength);
+    const bufferRecord = await this.Logger.get(
+      offset,
+      recordLength
+    );
 
-    // de-construct buffer record
     const finalValue = this.parseBuffer(bufferRecord);
-
-    console.log(JSON.stringify(finalValue, "", 2));
 
     return JSON.parse(finalValue.value);
   }
 
-  moveBuffer(buffer, offset){
+  moveBuffer(buffer, offset) {
     const startOffset = offset;
-    let recordLength = 8; // 4 + 4
 
-    // First 4 bytes of current record → key length
+    let recordLength = 8;
+
+    // key length
     const keyLength = buffer.readUInt32BE(offset);
     offset += 4;
 
-    // Next 4 bytes → value length
+    // value length
     const valueLength = buffer.readUInt32BE(offset);
     offset += 4;
 
-    // Next keyLength bytes → key
-    const key = buffer.subarray(offset, offset + keyLength);
+    // key
+    const key = buffer.subarray(
+      offset,
+      offset + keyLength
+    );
+
     offset += keyLength;
-    
+
     recordLength += keyLength;
     recordLength += valueLength;
 
-    this.hashIndex.set(key.toString(), {offset: startOffset, recordLength: recordLength});
+    this.hashIndex.set(key.toString(), {
+      offset: startOffset,
+      recordLength,
+    });
 
     offset += valueLength;
-    
+
     return offset;
   }
 
   parseBuffer(buffer) {
     let offset = 0;
 
-    // First 4 bytes → key length
     const keyLength = buffer.readUInt32BE(offset);
     offset += 4;
 
-    // Next 4 bytes → value length
     const valueLength = buffer.readUInt32BE(offset);
     offset += 4;
 
-    // Next keyLength bytes → key
-    const key = buffer.subarray(offset, offset + keyLength);
+    const key = buffer.subarray(
+      offset,
+      offset + keyLength
+    );
+
     offset += keyLength;
 
-    // Next valueLength bytes → value
-    const value = buffer.subarray(offset, offset + valueLength);
+    const value = buffer.subarray(
+      offset,
+      offset + valueLength
+    );
 
     return {
       keyLength,
@@ -117,5 +149,86 @@ export class HashIndex {
       key: key.toString(),
       value: value.toString(),
     };
+  }
+
+  async compact() {
+    if (this.compacting) {
+      return;
+    }
+
+    this.compacting = true;
+
+    console.log("Starting compaction...");
+
+    const tempPath = `${this.path}.compacting`;
+
+    try {
+      // Create a new temporary file
+      const tempHandle = await fs.open(
+        tempPath,
+        "w+"
+      );
+
+      let newOffset = 0;
+
+      /*
+       * We currently have:
+       *
+       * hashIndex:
+       *
+       * A -> { offset: 0, ... }
+       * B -> { offset: 30, ... }
+       * C -> { offset: 70, ... }
+       *
+       * Read each latest record and write it
+       * sequentially to the new file.
+       */
+      for (const [key, entry] of this.hashIndex) {
+        const oldRecord = await this.Logger.get(
+          entry.offset,
+          entry.recordLength
+        );
+
+        await tempHandle.write(
+          oldRecord,
+          0,
+          oldRecord.length,
+          newOffset
+        );
+
+        // IMPORTANT:
+        // Update hash index to the NEW offset.
+        this.hashIndex.set(key, {
+          offset: newOffset,
+          recordLength: oldRecord.length,
+        });
+
+        newOffset += oldRecord.length;
+      }
+
+      await tempHandle.close();
+
+      /*
+       * Replace old log with compacted log.
+       */
+      await this.Logger.replaceWith(tempPath);
+
+      console.log(
+        `Compaction complete. New size: ${newOffset} bytes`
+      );
+    } catch (error) {
+      console.error("Compaction failed:", error);
+
+      // Clean up temporary file if it exists
+      try {
+        await fs.unlink(tempPath);
+      } catch {
+        // Ignore if file doesn't exist
+      }
+
+      throw error;
+    } finally {
+      this.compacting = false;
+    }
   }
 }
