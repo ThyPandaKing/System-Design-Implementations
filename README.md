@@ -28,7 +28,7 @@ A list of implementable algorithms/systems mapped to each part of *Designing Dat
   - *Description:* Log-structured merge tree — writes go to an in-memory memtable, flushed to sorted SSTables on disk, merged via background compaction.
   - *MFR:* Memtable backed by sorted structure (skip list / red-black tree); flush to disk when size threshold hit; SSTable read path with binary search; multi-level compaction merging overlapping SSTables; optional bloom filter to skip SSTables without the key.
 
-- [ ] **B-tree**
+- [-] **B-tree**
   - *Description:* Balanced tree storage engine using fixed-size disk pages.
   - *MFR:* Fixed-size page/node format; insert with node splitting on overflow; point lookup and range scan; write-ahead log (WAL) for crash recovery.
 
