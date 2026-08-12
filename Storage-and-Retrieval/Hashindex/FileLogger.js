@@ -33,6 +33,11 @@ export default class Logger {
     return currOffset;
   }
 
+  async truncate() {
+        await this.handle.truncate(0);
+        this.offset = 0;
+    }
+
   async get(offset, length) {
     const buffer = Buffer.alloc(length);
 

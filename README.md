@@ -24,7 +24,7 @@ A list of implementable algorithms/systems mapped to each part of *Designing Dat
   - *Description:* Simplest storage engine — in-memory hash map pointing to byte offsets in an append-only log file.
   - *MFR:* `put(key, value)` appends to log and updates in-memory index; `get(key)` reads via offset; background compaction merges segments and discards overwritten keys; crash recovery rebuilds index by replaying the log.
 
-- [ ] **LSM-tree**
+- [-] **LSM-tree**
   - *Description:* Log-structured merge tree — writes go to an in-memory memtable, flushed to sorted SSTables on disk, merged via background compaction.
   - *MFR:* Memtable backed by sorted structure (skip list / red-black tree); flush to disk when size threshold hit; SSTable read path with binary search; multi-level compaction merging overlapping SSTables; optional bloom filter to skip SSTables without the key.
 
@@ -32,7 +32,7 @@ A list of implementable algorithms/systems mapped to each part of *Designing Dat
   - *Description:* Balanced tree storage engine using fixed-size disk pages.
   - *MFR:* Fixed-size page/node format; insert with node splitting on overflow; point lookup and range scan; write-ahead log (WAL) for crash recovery.
 
-- [ ] **Benchmark: LSM-tree vs. B-tree**
+- [-] **Benchmark: LSM-tree vs. B-tree**
   - *Description:* Compare the two engines built above.
   - *MFR:* Measure write throughput, read latency, and disk space usage on identical datasets; report write/read/space amplification.
 
