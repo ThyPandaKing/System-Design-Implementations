@@ -38,11 +38,11 @@ A list of implementable algorithms/systems mapped to each part of *Designing Dat
 
 ### Ch 4 — Encoding and Evolution
 
-- [ ] **Multi-format serialization comparison**
+- [-] **Multi-format serialization comparison**
   - *Description:* Serialize identical data using JSON, Protocol Buffers, and Avro.
   - *MFR:* Same object serialized in all three formats; compare byte size.
 
-- [ ] **Schema evolution test harness**
+- [-] **Schema evolution test harness**
   - *Description:* Test forward/backward compatibility of schema changes.
   - *MFR:* Add a field, remove a field, rename a field; verify old code can read new data (forward compat) and new code can read old data (backward compat) for each format.
 

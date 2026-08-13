@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+message User {
+  int32 user_id = 1;
+  string username = 2;
+  bool is_active = 3;
+  int32 signup_timestamp = 4;
+  repeated string tags = 5;
+  Address address = 6;
+  
+}
+
+message Address {
+    string city = 1;
+    string zip = 2;
+}
